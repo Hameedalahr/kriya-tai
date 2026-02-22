@@ -1,130 +1,413 @@
-# Kriya-TAI: Computer Vision Detection Project
+# 🚦 Dual-Lane Vehicle Detection and Counting System
 
-## Project Overview
+## 📌 Project Overview
 
-Kriya-TAI is a computer vision project focused on object and vehicle detection using YOLOv8 (You Only Look Once v8) deep learning models. The system processes video data through detection pipelines to identify and annotate objects and vehicles in traffic scenarios.
+This project is a smart traffic monitoring system built using:
 
-## Project Structure
+- YOLOv8 (Ultralytics)
+- OpenCV
+- Python
+
+It detects vehicles in a road video and counts them separately in:
+
+- LEFT lane
+- RIGHT lane
+
+The system tracks vehicles using ByteTrack and displays:
+
+- Bounding boxes
+- Vehicle class
+- Track ID
+- Lane information
+- Real-time FPS
+- Lane-wise vehicle counts
+- Total vehicle count
+
+---
+
+# 📁 Project Folder Structure
 
 ```
-kriya-tai/
-├── README.md                        # Project documentation
-├── notebooks/
-│   ├── object_detection.ipynb      # General object detection pipeline
-│   └── vehicle_detection.ipynb     # Vehicle-specific detection pipeline
+traffic-vehicle-counter/
+│
+├── models/
+│   └── yolov8n.pt
+│
 ├── data/
-│   ├── image/
-│   │   ├── raw/                    # Reserved for raw image data
-│   │   └── processed/              # Reserved for processed images
 │   └── video/
-│       ├── raw/                    # Input video files
-│       │   ├── 4K Video of Highway Traffic! - Nicholas Abraham-Raegan Martinez (720p, h264).mp4
-│       │   └── Traffic_video_demo.mp4
-│       └── processed/              # Output videos after detection
-│           ├── object_detection.mp4
-│           ├── vehicle_detection.mp4
-│           └── vehicle_count.mp4
-├── models/                         # YOLO model weights (referenced)
-├── myvenv/                         # Python virtual environment
-└── .git/                           # Version control repository
+│       ├── raw/
+│       │   └── traffic_video_demo.mp4
+│       │
+│       └── processed/
+│           └── output_lane_count.mp4
+│
+├── main.py
+├── requirements.txt
+└── README.md
 ```
 
-## Environment Setup
+---
 
-- **Python Version**: 3.13
-- **Virtual Environment**: `myvenv/`
-- **Activation Command**: `.\myvenv\Scripts\activate`
-- **Package Manager**: pip
+# 🛠️ Installation Guide
 
-## Key Dependencies Installed
+## 1️⃣ Create Virtual Environment
 
-- **Object Detection**: ultralytics (YOLO models)
-- **Computer Vision**: opencv-python (cv2), torch, torchvision
-- **Data Processing**: numpy, scipy, pandas, polars
-- **Visualization**: matplotlib, Pillow
-- **Scientific Computing**: scikit-learn, networkx, sympy
-- **Other Utilities**: requests, pyyaml, psutil, filelock
+```bash
+python -m venv venv
+venv\Scripts\activate   # Windows
+```
 
-## Project Notebooks
+## 2️⃣ Install Dependencies
 
-### 1. object_detection.ipynb
+```bash
+pip install ultralytics opencv-python numpy
+```
 
-Detects all objects in video frames using YOLOv8n model.
+OR run the automatic installer in the script.
 
-**Workflow**:
+---
 
-- Loads pretrained YOLOv8n model (`../models/yolov8n.pt`)
-- Reads input video from `../data/video/raw/Traffic_video_demo.mp4`
-- Extracts video properties (width, height, FPS)
-- Processes each frame with YOLO detection
-- Draws bounding boxes and labels on detected objects
-- Writes annotated frames to `../data/video/processed/object_detection.mp4`
+# ⚙️ Configuration Parameters
 
-**Status**: Fully implemented and executed (14 code cells executed)
+Inside CONFIG:
 
-### 2. vehicle_detection.ipynb
+```python
+CONFIG = {
+    'model_name': 'yolov8n.pt',
+    'model_path': str(MODEL_PATH),
+    'confidence_threshold': 0.5,
+    'tracker': 'bytetrack.yaml',
+    'device': 0,
+    'target_classes': ['motorcycle', 'bicycle', 'car', 'truck'],
+    'video_input': str(VIDEO_INPUT),
+    'video_output': str(VIDEO_OUTPUT),
+    'display_fps': True,
+    'display_roi': True,
+    'draw_track_ids': True,
+    'left_count_line_y': 350,
+    'right_count_line_y': 400,
+}
+```
 
-Detects and filters only vehicle classes from video frames.
+### Explanation:
 
-**Workflow**:
+| Parameter | Purpose |
+|------------|----------|
+| model_name | YOLO model name |
+| model_path | Path where model is stored |
+| confidence_threshold | Minimum detection confidence |
+| tracker | Tracking algorithm |
+| device | 0 = GPU, cpu = CPU |
+| target_classes | Vehicles to detect |
+| video_input | Input video path |
+| video_output | Output video path |
+| display_fps | Show FPS on screen |
+| display_roi | Show lane split line |
+| draw_track_ids | Show tracking IDs |
+| left_count_line_y | Left lane counting line |
+| right_count_line_y | Right lane counting line |
 
-- Loads YOLOv8n model and extracts class names
-- Filters for vehicle classes: bike, truck, bus, bicycle, motorcycle, car
-- Reads same input video
-- Extracts video properties
-- Processes frames with YOLO, applying class filter
-- Writes vehicle-only detections to `../data/video/processed/vehicle_detection.mp4`
+---
 
-**Status**: Fully implemented and executed (12 code cells executed)
+# 🧠 How The System Works (Step-by-Step)
 
-### 3. vehicle_count.ipynb
+## 1️⃣ Path Setup
 
-Detects vehicles and counts each type per frame, displaying cumulative counts on video overlay.
+```python
+PROJECT_ROOT = Path.cwd().parent
+```
 
-**Workflow**:
+Defines root directory.
 
-- Loads YOLOv8n model and extracts class names
-- Filters for vehicle classes: bike, truck, bus, bicycle, motorcycle, car
-- Reads same input video with 0.4 confidence threshold
-- Extracts video properties
-- For each frame:
-  - Detects vehicles using filtered classes
-  - Counts occurrences of each vehicle type
-  - Displays live count for: bicycle, car, motorcycle, bus, truck
-  - Renders counts as text overlay on frame (green text, top-left position)
-- Writes annotated frames to `../data/video/processed/vehicle_count.mp4`
+Creates:
+- models folder
+- output folder if not existing
 
-**Status**: Fully implemented and executed (13 code cells executed, 1 empty cell)
+---
 
-## Data Status
+## 2️⃣ VehicleDetector Class
 
-- **Raw Videos**: 2 files (traffic video demos in 720p H.264 format)
-- **Processed Videos**: 3 files
-  - object_detection.mp4 (from object_detection.ipynb)
-  - vehicle_detection.mp4 (from vehicle_detection.ipynb)
-  - vehicle_count.mp4 (from vehicle_count.ipynb with live vehicle counts overlaid)
-- **Images**: No data yet (directories reserved for future use)
+This is the core logic of the system.
 
-## Model Information
+---
 
-- **Model Used**: YOLOv8n (Nano version)
-- **Model Location**: `../models/yolov8n.pt` (referenced from notebooks)
-- **Input**: Traffic video footage (720p resolution)
-- **Output Format**: MP4 video with annotated detections
+## 🔹 CLASS_NAMES
 
-## Getting Started
+Maps COCO dataset class IDs to readable vehicle names.
 
-1. Start Windows Command Prompt or PowerShell
-2. Navigate to project directory: `cd "d:\4-2 Projects\kriya-tai"`
-3. Activate virtual environment: `.\myvenv\Scripts\activate`
-4. Launch Jupyter: `jupyter notebook notebooks/`
-5. Open `object_detection.ipynb` or `vehicle_detection.ipynb`
-6. Run cells sequentially to process videos
-7. Check `data/video/processed/` for output videos
+Only includes:
+- bicycle
+- car
+- motorcycle
+- truck
 
-## Notes
+---
 
-- Video processing can be time-consuming depending on video length and system resources
-- YOLOv8n is the nano model (lightweight, fast inference)
-- All paths in notebooks are relative to the notebooks/ directory
-- Output videos maintain the same FPS as input videos
+## 🔹 __init__()
+
+Initializes:
+
+- YOLO model
+- Tracking sets
+- Lane counters
+- Config parameters
+
+Loads model using:
+
+```python
+self.model = YOLO(config['model_path'])
+```
+
+---
+
+## 🔹 get_lane_for_bbox()
+
+Determines lane by:
+
+- Finding bounding box center X
+- Comparing with frame midpoint
+
+If:
+- center < midpoint → LEFT
+- center > midpoint → RIGHT
+
+---
+
+## 🔹 get_vehicle_class()
+
+Checks if detected object is in target classes.
+
+Filters unwanted classes like:
+- person
+- dog
+- chair
+
+---
+
+## 🔹 process_frame()
+
+This is the detection pipeline:
+
+1. Run YOLOv8 tracking:
+   ```python
+   results = self.model.track(...)
+   ```
+
+2. Extract:
+   - class ID
+   - confidence
+   - tracking ID
+   - bounding box
+
+3. Filter target vehicle classes
+
+4. Determine lane
+
+5. Count vehicle (once per ID)
+
+6. Draw bounding boxes
+
+Returns annotated frame.
+
+---
+
+## 🔹 _draw_detections()
+
+Draws:
+
+- Vertical lane split line
+- Bounding boxes
+- Labels
+- Track IDs
+- Lane indicators
+
+---
+
+## 🔹 draw_counts()
+
+Displays:
+
+- LEFT lane count
+- RIGHT lane count
+- Category-wise counts
+- Total vehicles
+- FPS
+
+Uses transparent overlay for professional UI.
+
+---
+
+## 🔹 reset_counts()
+
+Clears:
+
+- Tracking memory
+- Vehicle counters
+
+Used before processing new video.
+
+---
+
+# 🎥 process_video() Function
+
+This function controls video processing.
+
+Steps:
+
+1. Open video
+2. Read resolution
+3. Initialize video writer
+4. Loop frame-by-frame
+5. Calculate FPS
+6. Call:
+   - detector.process_frame()
+   - detector.draw_counts()
+7. Write output frame
+8. Display progress
+9. Release resources
+10. Print final statistics
+
+---
+
+# 📊 Final Output Includes
+
+After processing:
+
+- LEFT lane vehicle count
+- RIGHT lane vehicle count
+- Category-wise counts
+- Total vehicles
+- Average FPS
+- Output video file location
+
+---
+
+# 🔍 FPS Calculation
+
+FPS is calculated using:
+
+```python
+cv2.getTickCount()
+```
+
+Formula:
+
+```
+FPS = 1 / time_difference
+```
+
+Higher FPS = better performance.
+
+---
+
+# 🚗 Vehicle Classes Detected
+
+The system detects:
+
+- Motorcycle
+- Bicycle
+- Car
+- Truck
+
+Other classes are ignored.
+
+---
+
+# 📈 Sample Output
+
+```
+LEFT LANE: 42 vehicles
+  Cars: 25
+  Trucks: 5
+  Motorcycles: 8
+  Bicycles: 4
+
+RIGHT LANE: 37 vehicles
+  Cars: 22
+  Trucks: 3
+  Motorcycles: 9
+  Bicycles: 3
+
+TOTAL: 79 vehicles
+Average FPS: 23.5
+```
+
+---
+
+# 🚀 How To Run
+
+```bash
+python main.py
+```
+
+Output video will be saved to:
+
+```
+data/video/processed/output_lane_count.mp4
+```
+
+---
+
+# 🔥 System Features
+
+✔ Real-time vehicle detection  
+✔ ByteTrack multi-object tracking  
+✔ Dual-lane separation  
+✔ Separate vehicle counts per lane  
+✔ Category-wise counting  
+✔ FPS monitoring  
+✔ Automatic folder creation  
+✔ Clean configuration system  
+
+---
+
+# 📌 Future Improvements
+
+- Angled lane split line
+- Line crossing-based counting
+- Speed estimation
+- Emergency vehicle detection
+- Auto-rickshaw custom training
+- Traffic density estimation
+- Web dashboard integration
+
+---
+
+# 👨‍💻 Technologies Used
+
+- Python
+- OpenCV
+- Ultralytics YOLOv8
+- NumPy
+- ByteTrack
+
+---
+
+# 🎯 Conclusion
+
+This project demonstrates:
+
+- Real-time computer vision
+- Object detection
+- Multi-object tracking
+- Lane-wise traffic analysis
+- Practical smart traffic system design
+
+It can be extended into:
+
+- Smart traffic signal control
+- Emergency vehicle priority system
+- Urban traffic analytics dashboard
+- AI-based congestion monitoring system
+
+---
+
+# 📜 License
+
+Educational / Research Use
+
+---
+
+# ✨ Author
+
+Traffic Monitoring System using YOLOv8
